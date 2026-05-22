@@ -46,7 +46,7 @@ void main(List<String> args) async {
 }
 
 const _releaseBaseUrl =
-    'https://github.com/iv_re/hermes_dart/releases/download';
+    'https://github.com/iv-re/hermes_dart/releases/download';
 
 Future<Uri> _downloadPrebuiltBinary({
   required BuildInput input,
