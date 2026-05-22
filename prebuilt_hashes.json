@@ -1,0 +1,8 @@
+{
+  "macos_x64_libhermes_dart.dylib": "ff5e40a81e6630c0837f1f65ed766a83b2cab0efa2f6c171f5e7ab5fe0726925",
+  "macos_arm64_libhermes_dart.dylib": "08eac4a712207b8c7e21b6a08e940e8ebc522f7ce6dceebf17adf28afff7a035",
+  "linux_x64_libhermes_dart.so": "2a828161c4b725d35a35de508a1818239303b48ce766fb2b049b45175bbcd1e0",
+  "linux_arm64_libhermes_dart.so": "cd2003f5686a738b7d0856da4cc6b5dbd782b7b0282859c27fc59cecc93b3d67",
+  "windows_x64_hermes_dart.dll": "9bad5e65f12f7b05c57f7736f420ace73bf85b442b1d335edaf8cd1bf1780ffe",
+  "windows_arm64_hermes_dart.dll": "fcc74afd5760b8c1bbf2845195b0f7d055505ea78c1f54cc7148bcef25b1a80e"
+}

@@ -1,0 +1,26 @@
+{
+  "macos_x64": {
+    "target_os": "macos",
+    "target_cpu": "x64"
+  },
+  "macos_arm64": {
+    "target_os": "macos",
+    "target_cpu": "arm64"
+  },
+  "linux_x64": {
+    "target_os": "linux",
+    "target_cpu": "x64"
+  },
+  "linux_arm64": {
+    "target_os": "linux",
+    "target_cpu": "arm64"
+  },
+  "windows_x64": {
+    "target_os": "windows",
+    "target_cpu": "x64"
+  },
+  "windows_arm64": {
+    "target_os": "windows",
+    "target_cpu": "arm64"
+  }
+}

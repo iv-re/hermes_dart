@@ -1,0 +1,10 @@
+Language: Cpp
+BasedOnStyle: Google
+IndentWidth: 2
+ContinuationIndentWidth: 2
+ColumnLimit: 0
+IndentPPDirectives: BeforeHash
+AllowShortFunctionsOnASingleLine: Empty
+AlignAfterOpenBracket: BlockIndent
+BinPackParameters: false
+BinPackArguments: false
