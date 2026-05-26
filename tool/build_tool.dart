@@ -29,6 +29,7 @@ class BuildConfig {
 
   String get targetOs => options['target_os'] as String;
   String get targetCpu => options['target_cpu'] as String;
+  bool get iosUseSimulator => options['ios_use_simulator'] as bool? ?? false;
 
   static List<BuildConfig> loadAll() {
     final configFile = File('tool/build_config.json');
@@ -47,7 +48,9 @@ class BuildConfig {
 
   static List<BuildConfig> loadLocal() {
     return loadAll().where((config) {
-      if (Platform.isMacOS) return config.targetOs == 'macos';
+      if (Platform.isMacOS) {
+        return config.targetOs == 'macos' || config.targetOs == 'ios';
+      }
       if (Platform.isWindows) return config.targetOs == 'windows';
       if (Platform.isLinux) return config.targetOs == 'linux';
       return false;
@@ -135,6 +138,55 @@ class BuildCommand extends Command<void> {
             )
             ..writeln('!!! You should build $hostConfigName first.');
         }
+      }
+    }
+    if (config.targetOs == 'ios') {
+      final arch = config.targetCpu == 'x64' ? 'x86_64' : 'arm64';
+      final sdkName = config.iosUseSimulator ? 'iphonesimulator' : 'iphoneos';
+      final sdkPath = Process.runSync('xcrun', [
+        '--sdk',
+        sdkName,
+        '--show-sdk-path',
+      ]).stdout.toString().trim();
+
+      extraFlags.addAll([
+        '-DCMAKE_SYSTEM_NAME=iOS',
+        '-DCMAKE_OSX_SYSROOT=$sdkPath',
+        '-DCMAKE_OSX_ARCHITECTURES=$arch',
+        '-DHERMES_APPLE_TARGET_PLATFORM=$sdkPath',
+        '-DHERMES_IS_MOBILE_BUILD=ON',
+      ]);
+
+      final hostArch = Process.runSync('uname', [
+        '-m',
+      ]).stdout.toString().trim();
+
+      stdout.writeln('--- Cross-compiling for iOS $arch ---');
+
+      final String hostConfigName;
+      if (hostArch == 'x86_64') {
+        hostConfigName = 'macos_x64';
+      } else {
+        hostConfigName = 'macos_arm64';
+      }
+
+      final hostBuildDir = p.join(
+        Directory.current.path,
+        'build_$hostConfigName',
+      );
+
+      final importFile = p.join(hostBuildDir, 'ImportHostCompilers.cmake');
+
+      if (File(importFile).existsSync()) {
+        stdout.writeln('--- Using host tools from $importFile ---');
+        extraFlags.add('-DIMPORT_HOST_COMPILERS=$importFile');
+      } else {
+        stdout
+          ..writeln(
+            '!!! WARNING: ImportHostCompilers.cmake not found '
+            'in $hostBuildDir.',
+          )
+          ..writeln('!!! You should build $hostConfigName first.');
       }
     }
 
@@ -435,7 +487,7 @@ class TrimCommand extends Command<void> {
 
 String getLibName(String os) {
   return switch (os) {
-    'macos' => 'libhermes_dart.dylib',
+    'macos' || 'ios' => 'libhermes_dart.dylib',
     'windows' => 'hermes_dart.dll',
     _ => 'libhermes_dart.so',
   };

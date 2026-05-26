@@ -7,6 +7,20 @@
     "target_os": "macos",
     "target_cpu": "arm64"
   },
+  "ios_arm64": {
+    "target_os": "ios",
+    "target_cpu": "arm64"
+  },
+  "ios_sim_arm64": {
+    "target_os": "ios",
+    "target_cpu": "arm64",
+    "ios_use_simulator": true
+  },
+  "ios_sim_x64": {
+    "target_os": "ios",
+    "target_cpu": "x64",
+    "ios_use_simulator": true
+  },
   "linux_x64": {
     "target_os": "linux",
     "target_cpu": "x64"

@@ -140,15 +140,21 @@ String _getConfiguration(BuildInput input) {
     .windows => 'windows',
     .linux => 'linux',
     // .android => 'android',
-    // .iOS => 'ios',
-    _ => throw BuildError(message: 'Unsupported target OS: ${code.targetOS}'),
+    .iOS => code.iOS.targetSdk == IOSSdk.iPhoneSimulator
+        ? 'ios_sim'
+        : 'ios',
+    _ => throw BuildError(
+      message: 'Unsupported target OS: ${code.targetOS}',
+    ),
   };
 
   final arch = switch (code.targetArchitecture) {
     .x64 => 'x64',
     .arm64 => 'arm64',
     _ => throw BuildError(
-      message: 'Unsupported target architecture: ${code.targetArchitecture}',
+      message:
+          'Unsupported target architecture: '
+          '${code.targetArchitecture}',
     ),
   };
 
