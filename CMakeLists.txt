@@ -66,7 +66,6 @@ if(APPLE)
         "-framework CoreFoundation"
     )
     target_link_options(hermes_dart PRIVATE 
-        "-Wl,-force_load,${CMAKE_CURRENT_BINARY_DIR}/hermes/lib/libhermesvm_a.a"
         "-Wl,-undefined,dynamic_lookup" 
         "-Wl,-dead_strip"
     )
