@@ -48,6 +48,7 @@ class BuildConfig {
 
   static List<BuildConfig> loadLocal() {
     return loadAll().where((config) {
+      if (config.targetOs == 'android') return true;
       if (Platform.isMacOS) {
         return config.targetOs == 'macos' || config.targetOs == 'ios';
       }
@@ -72,6 +73,10 @@ class BuildCommand extends Command<void> {
         abbr: 'j',
         help: 'Number of parallel build jobs',
         defaultsTo: '4',
+      )
+      ..addOption(
+        'ndk',
+        help: 'Path to Android NDK',
       )
       ..addFlag(
         'verbose',
@@ -168,6 +173,97 @@ class BuildCommand extends Command<void> {
         hostConfigName = 'macos_x64';
       } else {
         hostConfigName = 'macos_arm64';
+      }
+
+      final hostBuildDir = p.join(
+        Directory.current.path,
+        'build_$hostConfigName',
+      );
+
+      final importFile = p.join(hostBuildDir, 'ImportHostCompilers.cmake');
+
+      if (File(importFile).existsSync()) {
+        stdout.writeln('--- Using host tools from $importFile ---');
+        extraFlags.add('-DIMPORT_HOST_COMPILERS=$importFile');
+      } else {
+        stdout
+          ..writeln(
+            '!!! WARNING: ImportHostCompilers.cmake not found '
+            'in $hostBuildDir.',
+          )
+          ..writeln('!!! You should build $hostConfigName first.');
+      }
+    }
+    if (config.targetOs == 'android') {
+      final ndkPath =
+          results?['ndk'] as String? ??
+          Platform.environment['ANDROID_NDK'] ??
+          Platform.environment['ANDROID_NDK_HOME'] ??
+          Platform.environment['ANDROID_NDK_ROOT'] ??
+          _detectLocalNdk();
+
+      if (ndkPath == null || !Directory(ndkPath).existsSync()) {
+        throw Exception(
+          'Android NDK path not found. Please set ANDROID_NDK environment '
+          'variable or pass --ndk option.',
+        );
+      }
+
+      final abi = switch (config.targetCpu) {
+        'arm64' => 'arm64-v8a',
+        'arm' => 'armeabi-v7a',
+        'x64' => 'x86_64',
+        'x86' => 'x86',
+        _ => throw Exception('Unsupported target CPU: ${config.targetCpu}'),
+      };
+
+      final ndkCMake = p.join(
+        ndkPath,
+        'build',
+        'cmake',
+        'android.toolchain.cmake',
+      );
+
+      if (!File(ndkCMake).existsSync()) {
+        throw Exception('CMake toolchain file not found in NDK at: $ndkCMake');
+      }
+
+      // TODO: Support HERMES_IS_ANDROID=ON
+      // Currently using HERMES_UNICODE_LITE=ON and ICU_FOUND=1
+      extraFlags.addAll([
+        '-DCMAKE_TOOLCHAIN_FILE=$ndkCMake',
+        '-DANDROID_ABI=$abi',
+        '-DANDROID_PLATFORM=android-24',
+        '-DANDROID_STL=c++_static',
+        '-DANDROID_PIE=ON',
+        '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON',
+        '-DHERMES_UNICODE_LITE=ON',
+        '-DICU_FOUND=1',
+        '-DHERMES_IS_MOBILE_BUILD=ON',
+        '-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=True',
+        '-DHERMESVM_HEAP_HV_MODE=HEAP_HV_PREFER32',
+      ]);
+
+      // Check host architecture to import host compilers
+      final String hostConfigName;
+      if (Platform.isMacOS) {
+        final hostArch = Process.runSync('uname', [
+          '-m',
+        ]).stdout.toString().trim();
+        hostConfigName = hostArch == 'x86_64' ? 'macos_x64' : 'macos_arm64';
+      } else if (Platform.isWindows) {
+        final hostArch = Platform.environment['PROCESSOR_ARCHITECTURE']
+            ?.toUpperCase();
+        hostConfigName = (hostArch == 'AMD64' || hostArch == 'IA64')
+            ? 'windows_x64'
+            : 'windows_arm64';
+      } else if (Platform.isLinux) {
+        final hostArch = Process.runSync('uname', [
+          '-m',
+        ]).stdout.toString().trim();
+        hostConfigName = hostArch == 'aarch64' ? 'linux_arm64' : 'linux_x64';
+      } else {
+        throw Exception('Unsupported host OS');
       }
 
       final hostBuildDir = p.join(
@@ -491,4 +587,57 @@ String getLibName(String os) {
     'windows' => 'hermes_dart.dll',
     _ => 'libhermes_dart.so',
   };
+}
+
+String? _detectLocalNdk() {
+  final home =
+      Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+  if (home == null) return null;
+
+  if (Platform.isMacOS) {
+    final ndkDir = Directory(p.join(home, 'Library/Android/sdk/ndk'));
+    if (ndkDir.existsSync()) {
+      final versions = ndkDir.listSync().whereType<Directory>().toList();
+      if (versions.isNotEmpty) {
+        versions.sort(
+          (a, b) => p.basename(b.path).compareTo(p.basename(a.path)),
+        );
+        return versions.first.path;
+      }
+    }
+    final bundleDir = Directory(p.join(home, 'Library/Android/sdk/ndk-bundle'));
+    if (bundleDir.existsSync()) return bundleDir.path;
+  } else if (Platform.isLinux) {
+    final ndkDir = Directory(p.join(home, 'Android/Sdk/ndk'));
+    if (ndkDir.existsSync()) {
+      final versions = ndkDir.listSync().whereType<Directory>().toList();
+      if (versions.isNotEmpty) {
+        versions.sort(
+          (a, b) => p.basename(b.path).compareTo(p.basename(a.path)),
+        );
+        return versions.first.path;
+      }
+    }
+    final bundleDir = Directory(p.join(home, 'Android/Sdk/ndk-bundle'));
+    if (bundleDir.existsSync()) return bundleDir.path;
+  } else if (Platform.isWindows) {
+    final localApp = Platform.environment['LOCALAPPDATA'];
+    if (localApp != null) {
+      final ndkDir = Directory(p.join(localApp, 'Android', 'Sdk', 'ndk'));
+      if (ndkDir.existsSync()) {
+        final versions = ndkDir.listSync().whereType<Directory>().toList();
+        if (versions.isNotEmpty) {
+          versions.sort(
+            (a, b) => p.basename(b.path).compareTo(p.basename(a.path)),
+          );
+          return versions.first.path;
+        }
+      }
+      final bundleDir = Directory(
+        p.join(localApp, 'Android', 'Sdk', 'ndk-bundle'),
+      );
+      if (bundleDir.existsSync()) return bundleDir.path;
+    }
+  }
+  return null;
 }

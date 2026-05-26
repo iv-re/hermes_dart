@@ -139,7 +139,7 @@ String _getConfiguration(BuildInput input) {
     .macOS => 'macos',
     .windows => 'windows',
     .linux => 'linux',
-    // .android => 'android',
+    .android => 'android',
     .iOS => code.iOS.targetSdk == IOSSdk.iPhoneSimulator
         ? 'ios_sim'
         : 'ios',
@@ -151,6 +151,8 @@ String _getConfiguration(BuildInput input) {
   final arch = switch (code.targetArchitecture) {
     .x64 => 'x64',
     .arm64 => 'arm64',
+    .arm => 'arm',
+    .ia32 => 'x86',
     _ => throw BuildError(
       message:
           'Unsupported target architecture: '
